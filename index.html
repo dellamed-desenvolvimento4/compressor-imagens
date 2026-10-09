@@ -805,7 +805,7 @@ async function processar() {
   const { cfg, erros } = validar(lerFormulario());
   mostrarMensagem('erros', erros);
 
-  const ordenados = [...arquivos].sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+  const ordenados = [...arquivos].sort((a, b) => a.name.localeCompare(b.name, 'pt-BR', { numeric: true }));
   resultados = ordenados.map((arquivo) => ({ arquivo, estado: 'aguardando' }));
   processando = !erros.length && resultados.length > 0;
   desenharLista();
@@ -914,8 +914,20 @@ soltar.addEventListener('drop', (e) => {
 window.addEventListener('dragover', (e) => e.preventDefault());
 window.addEventListener('drop', (e) => e.preventDefault());
 
+// Imagens coladas (print, "Copiar imagem") chegam todas como "image.png"; sem nome único,
+// a segunda seria pulada por gerar o mesmo arquivo. Viram colada-1, colada-2, ...
+const EXTENSAO_POR_TIPO = {
+  'image/png': '.png', 'image/jpeg': '.jpg', 'image/webp': '.webp', 'image/gif': '.gif', 'image/bmp': '.bmp',
+};
+let totalColadas = 0;
+
 document.addEventListener('paste', (e) => {
-  const colados = [...(e.clipboardData?.files || [])];
+  const colados = [...(e.clipboardData?.files || [])].map((f) => {
+    if (!/^image\.\w+$/i.test(f.name)) return f;  // arquivo copiado no Explorer: mantém o nome real
+    totalColadas++;
+    const ext = EXTENSAO_POR_TIPO[f.type] || extensao(f.name);
+    return new File([f], `colada-${totalColadas}${ext}`, { type: f.type, lastModified: f.lastModified });
+  });
   if (colados.length) adicionar(colados);
 });
 
