@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Compressor de Imagens</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230b62d6'/%3E%3Crect x='17' y='17' width='30' height='30' rx='5' fill='%23fff'/%3E%3Cpath d='M20 44l9-12 6 7 4-4 6 9z' fill='%230b62d6'/%3E%3Ccircle cx='26' cy='25' r='3' fill='%230b62d6'/%3E%3Cg fill='none' stroke='%23fff' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 5l8 8M13 6v7H6M59 5l-8 8M51 6v7h7M5 59l8-8M13 58v-7H6M59 59l-8-8M51 58v-7h7'/%3E%3C/g%3E%3C/svg%3E">
 <style>
   :root {
     --bg: #f4f6f8;
@@ -76,7 +77,8 @@
     font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   }
   .pagina { max-width: 1100px; margin: 0 auto; padding: 24px 16px 48px; }
-  .topo h1 { margin: 0 0 4px; font-size: 1.5rem; }
+  .topo h1 { margin: 0 0 4px; font-size: 1.5rem; display: flex; align-items: center; gap: 10px; }
+  .logo { width: 36px; height: 36px; flex: none; }
   .topo p { margin: 0 0 20px; color: var(--muted); max-width: 70ch; }
 
   .layout { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 20px; align-items: start; }
@@ -200,7 +202,17 @@
 <body>
 <div class="pagina">
   <header class="topo">
-    <h1>Compressor de imagens</h1>
+    <h1>
+      <svg class="logo" viewBox="0 0 64 64" aria-hidden="true">
+        <rect width="64" height="64" rx="14" fill="#0b62d6"/>
+        <rect x="17" y="17" width="30" height="30" rx="5" fill="#fff"/>
+        <path d="M20 44l9-12 6 7 4-4 6 9z" fill="#0b62d6"/>
+        <circle cx="26" cy="25" r="3" fill="#0b62d6"/>
+        <path d="M5 5l8 8M13 6v7H6M59 5l-8 8M51 6v7h7M5 59l8-8M13 58v-7H6M59 59l-8-8M51 58v-7h7"
+              fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      Compressor de imagens
+    </h1>
     <p>Redimensiona e comprime cada imagem para caber no tamanho máximo, mantendo o nome do arquivo. Tudo é processado no seu navegador: nenhuma imagem é enviada para a internet.</p>
   </header>
 
