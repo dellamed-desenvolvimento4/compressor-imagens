@@ -168,6 +168,21 @@
   }
   .miniatura img { max-width: 100%; max-height: 100%; display: block; }
   .nome { font-weight: 600; font-size: .9rem; overflow-wrap: anywhere; }
+  .saida { cursor: text; border-bottom: 1px dashed var(--muted); }
+  .lapis { margin-left: 4px; padding: 0 4px; border: 0; border-radius: 4px; background: none; color: var(--muted); font: inherit; cursor: pointer; }
+  .lapis:hover { color: var(--accent); background: var(--accent-soft); }
+  .lapis:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .renomear {
+    width: min(100%, 240px);
+    padding: 2px 6px;
+    border: 1px solid var(--accent);
+    border-radius: 4px;
+    background: var(--surface);
+    color: var(--text);
+    font: inherit;
+  }
+  .ext { margin-left: 2px; color: var(--muted); font-weight: 400; }
+  .detalhe.erro-nome { color: var(--err); }
   .detalhe { color: var(--muted); font-size: .85rem; overflow-wrap: anywhere; }
   .selo { font-size: .75rem; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: var(--surface-2); color: var(--muted); }
   .estado-ok .selo { background: var(--ok-soft); color: var(--ok); }
@@ -722,6 +737,7 @@ let arquivos = [];
 let resultados = [];
 let execucao = 0;
 let processando = false;
+const nomesPersonalizados = new Map();  // arquivo -> nome escolhido pela pessoa (sem extensão)
 
 function liberarResultados() {
   for (const r of resultados) if (r.url) URL.revokeObjectURL(r.url);
@@ -756,7 +772,6 @@ function atualizarItem(r) {
   }
 
   const dados = elemento('div');
-  const nome = r.estado === 'ok' ? `${r.arquivo.name} → ${r.nomeSaida}` : r.arquivo.name;
   let detalhe = kb(r.arquivo.size);
   if (r.estado === 'ok') {
     detalhe = `${kb(r.arquivo.size)} → ${kb(r.blob.size)} · ${r.largura}×${r.altura} · q${r.qualidade}`;
@@ -764,7 +779,19 @@ function atualizarItem(r) {
   } else if (r.mensagem) {
     detalhe = r.mensagem;
   }
-  dados.append(elemento('div', 'nome', nome), elemento('div', 'detalhe', detalhe));
+  const caixaNome = elemento('div', 'nome', r.estado === 'ok' ? `${r.arquivo.name} → ` : r.arquivo.name);
+  if (r.estado === 'ok') {
+    const saida = elemento('span', 'saida', r.nomeSaida);
+    saida.title = 'Clique duas vezes para renomear';
+    saida.addEventListener('dblclick', () => editarNome(r));
+    const lapis = elemento('button', 'lapis', '✎');
+    lapis.type = 'button';
+    lapis.title = 'Renomear';
+    lapis.setAttribute('aria-label', `Renomear ${r.nomeSaida}`);
+    lapis.addEventListener('click', () => editarNome(r));
+    caixaNome.append(saida, lapis);
+  }
+  dados.append(caixaNome, elemento('div', 'detalhe', detalhe));
 
   li.append(mini, dados, elemento('span', 'selo', SELOS[r.estado]));
   if (r.estado === 'ok') {
@@ -773,6 +800,55 @@ function atualizarItem(r) {
     a.download = r.nomeSaida;
     li.append(a);
   }
+}
+
+function limparNome(texto) {
+  let base = texto.replace(/[\\/:*?"<>|\x00-\x1f]/g, '').trim().replace(/[. ]+$/, '');
+  if (EXTENSOES_ACEITAS.has(extensao(base))) base = semExtensao(base);  // digitou a extensão junto
+  return base.trim();
+}
+
+function editarNome(r) {
+  const ext = extensao(r.nomeSaida);
+  const caixaNome = r.el.querySelector('.nome');
+  const detalhe = r.el.querySelector('.detalhe');
+  const input = elemento('input', 'renomear');
+  input.type = 'text';
+  input.value = semExtensao(r.nomeSaida);
+  input.setAttribute('aria-label', 'Novo nome do arquivo');
+  caixaNome.replaceChildren(input, elemento('span', 'ext', ext));
+  input.focus();
+  input.select();
+
+  let finalizado = false;
+  const concluir = (salvar, saindoDoCampo) => {
+    if (finalizado) return;
+    const base = limparNome(input.value);
+    const novo = base + ext;
+    if (salvar && base && novo !== r.nomeSaida) {
+      const repetido = resultados.some((o) => o !== r && o.estado === 'ok' && o.nomeSaida.toLowerCase() === novo.toLowerCase());
+      if (repetido && !saindoDoCampo) {
+        detalhe.textContent = `Já existe um arquivo chamado ${novo}. Escolha outro nome.`;
+        detalhe.classList.add('erro-nome');
+        return;
+      }
+      if (!repetido) {
+        nomesPersonalizados.set(r.arquivo, base);
+        r.nomeSaida = novo;
+      }
+    }
+    finalizado = true;
+    atualizarItem(r);
+  };
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      concluir(true, false);
+    } else if (e.key === 'Escape') {
+      concluir(false, false);
+    }
+  });
+  input.addEventListener('blur', () => concluir(true, true));
 }
 
 function atualizarResumo() {
@@ -827,7 +903,7 @@ async function processar() {
   const destinosUsados = new Map();
   for (const r of resultados) {
     if (id !== execucao) return;
-    r.nomeSaida = semExtensao(r.arquivo.name) + FORMATOS[cfg.formato].ext;
+    r.nomeSaida = (nomesPersonalizados.get(r.arquivo) ?? semExtensao(r.arquivo.name)) + FORMATOS[cfg.formato].ext;
     const chave = r.nomeSaida.toLowerCase();
     if (destinosUsados.has(chave)) {
       Object.assign(r, { estado: 'pulado', mensagem: `geraria o mesmo ${r.nomeSaida} de ${destinosUsados.get(chave)}` });
@@ -934,6 +1010,7 @@ document.addEventListener('paste', (e) => {
 $('limpar').addEventListener('click', () => {
   execucao++;
   arquivos = [];
+  nomesPersonalizados.clear();
   liberarResultados();
   processando = false;
   mostrarMensagem('info', []);
