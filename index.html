@@ -1,0 +1,942 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Compressor de Imagens</title>
+<style>
+  :root {
+    --bg: #f4f6f8;
+    --surface: #ffffff;
+    --surface-2: #f0f2f5;
+    --text: #1b1f24;
+    --muted: #5b636e;
+    --border: #d9dee4;
+    --accent: #0b62d6;
+    --accent-hover: #0952b5;
+    --accent-text: #ffffff;
+    --accent-soft: #e8f0fc;
+    --ok: #1a7f37;
+    --ok-soft: #e6f4ea;
+    --warn: #8a5a00;
+    --warn-soft: #fdf3dc;
+    --err: #c62828;
+    --err-soft: #fdeaea;
+    --xadrez: #e3e6ea;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #111418;
+      --surface: #1a1e24;
+      --surface-2: #232931;
+      --text: #e6e9ed;
+      --muted: #9aa3ad;
+      --border: #2f3640;
+      --accent: #4c9aff;
+      --accent-hover: #6aacff;
+      --accent-text: #0b1220;
+      --accent-soft: #16243a;
+      --ok: #4cc26c;
+      --ok-soft: #14261a;
+      --warn: #e0b44c;
+      --warn-soft: #2a2210;
+      --err: #ff6b6b;
+      --err-soft: #2c1515;
+      --xadrez: #2a3038;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #111418;
+    --surface: #1a1e24;
+    --surface-2: #232931;
+    --text: #e6e9ed;
+    --muted: #9aa3ad;
+    --border: #2f3640;
+    --accent: #4c9aff;
+    --accent-hover: #6aacff;
+    --accent-text: #0b1220;
+    --accent-soft: #16243a;
+    --ok: #4cc26c;
+    --ok-soft: #14261a;
+    --warn: #e0b44c;
+    --warn-soft: #2a2210;
+    --err: #ff6b6b;
+    --err-soft: #2c1515;
+    --xadrez: #2a3038;
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  .pagina { max-width: 1100px; margin: 0 auto; padding: 24px 16px 48px; }
+  .topo h1 { margin: 0 0 4px; font-size: 1.5rem; }
+  .topo p { margin: 0 0 20px; color: var(--muted); max-width: 70ch; }
+
+  .layout { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 20px; align-items: start; }
+  @media (max-width: 760px) { .layout { grid-template-columns: minmax(0, 1fr); } }
+
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+  .card h2 { margin: 0 0 12px; font-size: 1rem; }
+
+  .campo { display: block; margin-bottom: 12px; }
+  .campo > span { display: block; font-size: .85rem; font-weight: 600; margin-bottom: 4px; }
+  .campo small { display: block; color: var(--muted); font-size: .8rem; margin-top: 4px; }
+  .par { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  input[type="number"], select {
+    width: 100%;
+    padding: 7px 9px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--surface);
+    color: var(--text);
+    font: inherit;
+  }
+  input[type="color"] { width: 100%; height: 36px; padding: 2px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); }
+  input:focus-visible, select:focus-visible, .botao:focus-visible, .soltar:focus-visible, summary:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  .check { display: flex; gap: 8px; align-items: flex-start; margin-bottom: 12px; font-size: .9rem; }
+  .check input { margin-top: 4px; }
+  .check small { display: block; color: var(--muted); font-size: .8rem; }
+  details { border-top: 1px solid var(--border); padding-top: 10px; margin-bottom: 12px; }
+  summary { cursor: pointer; font-size: .9rem; font-weight: 600; margin-bottom: 10px; }
+
+  .botao {
+    display: inline-flex; align-items: center; justify-content: center;
+    padding: 8px 14px;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    background: var(--accent);
+    color: var(--accent-text);
+    font: inherit; font-weight: 600; font-size: .9rem;
+    text-decoration: none;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .botao:hover { background: var(--accent-hover); }
+  .botao.secundario { background: var(--surface-2); color: var(--text); border-color: var(--border); }
+  .botao.secundario:hover { border-color: var(--muted); }
+  .botao:disabled { opacity: .5; cursor: not-allowed; }
+  .largo { width: 100%; }
+
+  .soltar {
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+    padding: 36px 16px;
+    border: 2px dashed var(--border);
+    border-radius: 10px;
+    background: var(--surface);
+    text-align: center;
+    cursor: pointer;
+  }
+  .soltar strong { font-size: 1.05rem; }
+  .soltar span, .soltar small { color: var(--muted); }
+  .soltar.ativo, .soltar:hover { border-color: var(--accent); background: var(--accent-soft); }
+
+  .mensagem { margin-top: 12px; padding: 10px 12px; border-radius: 8px; font-size: .9rem; }
+  .mensagem.erro { background: var(--err-soft); color: var(--err); }
+  .mensagem.info { background: var(--warn-soft); color: var(--warn); }
+  .mensagem ul { margin: 0; padding-left: 18px; }
+
+  .barra { display: flex; flex-wrap: wrap; gap: 10px; justify-content: space-between; align-items: center; margin: 16px 0 8px; }
+  .barra .acoes { display: flex; gap: 8px; flex-wrap: wrap; }
+  .resumo { font-size: .9rem; color: var(--muted); }
+  .resumo b { color: var(--text); }
+
+  .resultados { list-style: none; margin: 0; padding: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  .resultados:empty { display: none; }
+  .item {
+    display: grid;
+    grid-template-columns: 56px minmax(0, 1fr) auto auto;
+    gap: 12px; align-items: center;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .item:last-child { border-bottom: 0; }
+  .miniatura {
+    width: 56px; height: 56px; border-radius: 6px;
+    background: repeating-conic-gradient(var(--xadrez) 0 25%, transparent 0 50%) 0 0 / 12px 12px;
+    border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center; overflow: hidden;
+  }
+  .miniatura img { max-width: 100%; max-height: 100%; display: block; }
+  .nome { font-weight: 600; font-size: .9rem; overflow-wrap: anywhere; }
+  .detalhe { color: var(--muted); font-size: .85rem; overflow-wrap: anywhere; }
+  .selo { font-size: .75rem; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: var(--surface-2); color: var(--muted); }
+  .estado-ok .selo { background: var(--ok-soft); color: var(--ok); }
+  .estado-erro .selo { background: var(--err-soft); color: var(--err); }
+  .estado-pulado .selo { background: var(--warn-soft); color: var(--warn); }
+  .estado-erro .detalhe { color: var(--err); }
+  @media (max-width: 520px) {
+    .item { grid-template-columns: 48px minmax(0, 1fr) auto; }
+    .miniatura { width: 48px; height: 48px; }
+    .item .botao { grid-column: 2 / -1; justify-self: start; }
+  }
+  .privacidade { margin-top: 16px; color: var(--muted); font-size: .8rem; }
+</style>
+</head>
+<body>
+<div class="pagina">
+  <header class="topo">
+    <h1>Compressor de imagens</h1>
+    <p>Redimensiona e comprime cada imagem para caber no tamanho máximo, mantendo o nome do arquivo. Tudo é processado no seu navegador: nenhuma imagem é enviada para a internet.</p>
+  </header>
+
+  <div class="layout">
+    <form class="card" id="config" autocomplete="off" onsubmit="return false">
+      <h2>Configurações</h2>
+
+      <label class="campo">
+        <span>Formato de saída</span>
+        <select id="formato">
+          <option value="jpg">JPG (melhor para fotos)</option>
+          <option value="webp">WEBP (normalmente o menor arquivo; aceita transparência)</option>
+          <option value="png">PNG (reduz a paleta de cores; bom para logos)</option>
+        </select>
+      </label>
+
+      <label class="campo">
+        <span>Tamanho máximo de cada arquivo (KB)</span>
+        <input type="number" id="tamanhoKb" min="0.1" step="0.1" inputmode="decimal">
+      </label>
+
+      <div class="par">
+        <label class="campo">
+          <span>Largura (px)</span>
+          <input type="number" id="largura" min="1" step="1" placeholder="auto" inputmode="numeric">
+        </label>
+        <label class="campo">
+          <span>Altura (px)</span>
+          <input type="number" id="altura" min="1" step="1" placeholder="auto" inputmode="numeric">
+        </label>
+      </div>
+      <small class="campo" style="margin-top:-8px;color:var(--muted);font-size:.8rem">Deixe um dos lados vazio para manter a proporção pelo outro.</small>
+
+      <label class="campo">
+        <span>Como encaixar na largura × altura</span>
+        <select id="modo">
+          <option value="preencher">Preencher</option>
+          <option value="cortar">Cortar</option>
+          <option value="ajustar">Ajustar</option>
+          <option value="esticar">Esticar</option>
+        </select>
+        <small id="descricaoModo"></small>
+      </label>
+
+      <label class="check">
+        <input type="checkbox" id="maximo">
+        <span>Comprimir ao máximo
+          <small>Desligado: fica abaixo do limite com a melhor qualidade possível. Ligado: usa sempre a qualidade mínima.</small>
+        </span>
+      </label>
+
+      <details>
+        <summary>Avançado</summary>
+        <div class="par">
+          <label class="campo">
+            <span>Qualidade mín.</span>
+            <input type="number" id="qMin" min="1" max="100" step="1">
+          </label>
+          <label class="campo">
+            <span>Qualidade máx.</span>
+            <input type="number" id="qMax" min="1" max="100" step="1">
+          </label>
+        </div>
+        <div class="par">
+          <label class="campo">
+            <span>Fator de redução</span>
+            <input type="number" id="fator" min="0.5" max="0.99" step="0.01">
+          </label>
+          <label class="campo">
+            <span>Lado mínimo (px)</span>
+            <input type="number" id="ladoMin" min="1" step="1">
+          </label>
+        </div>
+        <small class="campo" style="margin-top:-8px;color:var(--muted);font-size:.8rem">Se não couber nem com a qualidade mínima, a resolução cai pelo fator a cada tentativa, até o lado mínimo.</small>
+        <label class="campo">
+          <span>Cor de fundo</span>
+          <input type="color" id="corFundo">
+          <small>Bordas do modo "preencher" e fundo da transparência no JPG.</small>
+        </label>
+      </details>
+
+      <button type="button" class="botao secundario largo" id="restaurar">Restaurar padrões</button>
+    </form>
+
+    <section>
+      <label class="soltar" id="soltar" tabindex="0">
+        <input type="file" id="arquivos" multiple hidden
+               accept="image/*,.jpg,.jpeg,.jfif,.png,.webp,.bmp,.gif,.tif,.tiff">
+        <strong>Arraste as imagens aqui</strong>
+        <span>ou clique para selecionar (também dá para colar com Ctrl+V)</span>
+        <small>JPG, JFIF, PNG, WEBP, BMP, GIF</small>
+      </label>
+
+      <div class="mensagem erro" id="erros" hidden></div>
+      <div class="mensagem info" id="info" hidden></div>
+
+      <div class="barra" id="barra" hidden>
+        <div class="resumo" id="resumo"></div>
+        <div class="acoes">
+          <button type="button" class="botao secundario" id="limpar">Limpar</button>
+          <button type="button" class="botao" id="baixarZip" disabled>Baixar todas (.zip)</button>
+        </div>
+      </div>
+
+      <ul class="resultados" id="resultados"></ul>
+
+      <p class="privacidade">Ao mudar uma configuração, as imagens já adicionadas são processadas de novo automaticamente.</p>
+    </section>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+// ======================= PADRÕES (mesmos do comprime.py) =======================
+const PADROES = {
+  formato: 'jpg',
+  tamanhoKb: 23,
+  largura: 300,
+  altura: 300,
+  modo: 'preencher',
+  maximo: false,
+  qMin: 10,
+  qMax: 95,
+  fator: 0.9,
+  ladoMin: 32,
+  corFundo: '#ffffff',
+};
+// ===============================================================================
+
+const FORMATOS = {
+  jpg: { ext: '.jpg', mime: 'image/jpeg' },
+  webp: { ext: '.webp', mime: 'image/webp' },
+  png: { ext: '.png', mime: 'image/png' },
+};
+const EXTENSOES_ACEITAS = new Set(['.jpg', '.jpeg', '.png', '.webp', '.bmp', '.tif', '.tiff', '.gif', '.jfif']);
+const PODE_TER_TRANSPARENCIA = new Set(['.png', '.webp', '.gif']);
+const DESCRICAO_MODOS = {
+  preencher: 'Mantém a proporção e completa as bordas com a cor de fundo (sai exatamente L×A, nada é cortado).',
+  cortar: 'Mantém a proporção e corta o excesso pelo centro (sai exatamente L×A).',
+  ajustar: 'Mantém a proporção e cabe dentro de L×A (um dos lados pode ficar menor).',
+  esticar: 'Força L×A mesmo que distorça a imagem.',
+};
+// Codificador PNG com paleta (só é baixado se o formato PNG for escolhido)
+const URL_PAKO = 'https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js';
+const URL_UPNG = 'https://cdnjs.cloudflare.com/ajax/libs/upng-js/2.1.0/UPNG.min.js';
+const CHAVE_CONFIG = 'compressor-imagens:config';
+const CAMPOS = Object.keys(PADROES);
+
+const $ = (id) => document.getElementById(id);
+
+// ---------------------- utilidades ----------------------
+function extensao(nome) {
+  const i = nome.lastIndexOf('.');
+  return i < 0 ? '' : nome.slice(i).toLowerCase();
+}
+
+function semExtensao(nome) {
+  const i = nome.lastIndexOf('.');
+  return i <= 0 ? nome : nome.slice(0, i);
+}
+
+function numero(valor, casas = 1) {
+  return valor.toLocaleString('pt-BR', { minimumFractionDigits: casas, maximumFractionDigits: casas });
+}
+
+const kb = (bytes) => `${numero(bytes / 1024)} KB`;
+
+function elemento(tag, classe, texto) {
+  const el = document.createElement(tag);
+  if (classe) el.className = classe;
+  if (texto !== undefined) el.textContent = texto;
+  return el;
+}
+
+function baixar(blob, nome) {
+  const url = URL.createObjectURL(blob);
+  const a = elemento('a');
+  a.href = url;
+  a.download = nome;
+  document.body.append(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+
+function carregarScript(src) {
+  return new Promise((ok, falha) => {
+    const s = document.createElement('script');
+    s.src = src;
+    s.onload = ok;
+    s.onerror = falha;
+    document.head.append(s);
+  });
+}
+
+let promessaUpng = null;
+function carregarUpng() {
+  if (!promessaUpng) {
+    promessaUpng = carregarScript(URL_PAKO)
+      .then(() => carregarScript(URL_UPNG))
+      .catch(() => {
+        promessaUpng = null;
+        throw new Error('não foi possível carregar o codificador PNG (é preciso estar conectado à internet)');
+      });
+  }
+  return promessaUpng;
+}
+
+// ---------------------- configurações ----------------------
+function lerFormulario() {
+  const bruto = {};
+  for (const campo of CAMPOS) {
+    const el = $(campo);
+    bruto[campo] = el.type === 'checkbox' ? el.checked : el.value.trim();
+  }
+  return bruto;
+}
+
+function preencherFormulario(cfg) {
+  for (const campo of CAMPOS) {
+    const el = $(campo);
+    if (el.type === 'checkbox') el.checked = !!cfg[campo];
+    else el.value = cfg[campo] ?? '';
+  }
+  $('descricaoModo').textContent = DESCRICAO_MODOS[$('modo').value] || '';
+}
+
+function salvarConfig() {
+  try { localStorage.setItem(CHAVE_CONFIG, JSON.stringify(lerFormulario())); } catch {}
+}
+
+function configSalva() {
+  try {
+    const salva = JSON.parse(localStorage.getItem(CHAVE_CONFIG));
+    if (salva && typeof salva === 'object') return { ...PADROES, ...salva };
+  } catch {}
+  return { ...PADROES };
+}
+
+function validar(bruto) {
+  const n = (v) => (v === '' || v === null || v === undefined ? null : Number(String(v).replace(',', '.')));
+  const inteiro = (v) => Number.isInteger(v) && v > 0;
+  const cfg = {
+    formato: FORMATOS[bruto.formato] ? bruto.formato : PADROES.formato,
+    modo: DESCRICAO_MODOS[bruto.modo] ? bruto.modo : PADROES.modo,
+    maximo: !!bruto.maximo,
+    corFundo: /^#[0-9a-f]{6}$/i.test(bruto.corFundo) ? bruto.corFundo : PADROES.corFundo,
+    tamanhoKb: n(bruto.tamanhoKb),
+    largura: n(bruto.largura),
+    altura: n(bruto.altura),
+    qMin: n(bruto.qMin),
+    qMax: n(bruto.qMax),
+    fator: n(bruto.fator),
+    ladoMin: n(bruto.ladoMin),
+  };
+  const erros = [];
+  if (!(cfg.tamanhoKb > 0)) erros.push('O tamanho máximo deve ser maior que zero.');
+  if (cfg.largura !== null && !inteiro(cfg.largura)) erros.push('A largura deve ser um número inteiro maior que zero (ou vazia).');
+  if (cfg.altura !== null && !inteiro(cfg.altura)) erros.push('A altura deve ser um número inteiro maior que zero (ou vazia).');
+  if (!(inteiro(cfg.qMin) && cfg.qMin <= 100)) erros.push('A qualidade mínima deve ser um inteiro entre 1 e 100.');
+  else if (!(inteiro(cfg.qMax) && cfg.qMax >= cfg.qMin && cfg.qMax <= 100)) erros.push('A qualidade máxima deve ser um inteiro entre a mínima e 100.');
+  if (!(cfg.fator > 0 && cfg.fator < 1)) erros.push('O fator de redução deve estar entre 0 e 1 (ex.: 0,9).');
+  if (!inteiro(cfg.ladoMin)) erros.push('O lado mínimo deve ser um número inteiro maior que zero.');
+  return { cfg, erros };
+}
+
+// ---------------------- imagem ----------------------
+function novoCanvas(largura, altura) {
+  const c = document.createElement('canvas');
+  c.width = largura;
+  c.height = altura;
+  return c;
+}
+
+function contexto(canvas) {
+  const g = canvas.getContext('2d');
+  g.imageSmoothingEnabled = true;
+  g.imageSmoothingQuality = 'high';
+  return g;
+}
+
+async function carregarImagem(arquivo) {
+  // 'from-image' aplica a rotação do celular (EXIF), como o exif_transpose do script
+  try {
+    return await createImageBitmap(arquivo, { imageOrientation: 'from-image' });
+  } catch {
+    const url = URL.createObjectURL(arquivo);
+    try {
+      const img = new Image();
+      img.src = url;
+      await img.decode();
+      const c = novoCanvas(img.naturalWidth, img.naturalHeight);
+      c.getContext('2d').drawImage(img, 0, 0);
+      return c;
+    } catch {
+      throw new Error('formato não suportado pelo navegador');
+    } finally {
+      URL.revokeObjectURL(url);
+    }
+  }
+}
+
+function temTransparencia(img) {
+  const s = Math.min(1, 512 / Math.max(img.width, img.height));
+  const c = novoCanvas(Math.max(1, Math.round(img.width * s)), Math.max(1, Math.round(img.height * s)));
+  const g = c.getContext('2d', { willReadFrequently: true });
+  g.drawImage(img, 0, 0, c.width, c.height);
+  const dados = g.getImageData(0, 0, c.width, c.height).data;
+  for (let i = 3; i < dados.length; i += 4) if (dados[i] < 255) return true;
+  return false;
+}
+
+// Recorta (sx, sy, sw, sh) da origem e escala para dw x dh. Reduções grandes são feitas
+// em etapas de 50%, o que deixa o resultado bem mais nítido (aproxima o LANCZOS do Pillow).
+function escalar(origem, sx, sy, sw, sh, dw, dh) {
+  let atual = origem;
+  while (sw / 2 >= dw && sh / 2 >= dh) {
+    const nw = Math.round(sw / 2);
+    const nh = Math.round(sh / 2);
+    const c = novoCanvas(nw, nh);
+    contexto(c).drawImage(atual, sx, sy, sw, sh, 0, 0, nw, nh);
+    atual = c;
+    [sx, sy, sw, sh] = [0, 0, nw, nh];
+  }
+  const saida = novoCanvas(dw, dh);
+  contexto(saida).drawImage(atual, sx, sy, sw, sh, 0, 0, dw, dh);
+  return saida;
+}
+
+function redimensionar(img, cfg, transparente) {
+  const w = img.width;
+  const h = img.height;
+  if (cfg.largura === null && cfg.altura === null) return escalar(img, 0, 0, w, h, w, h);
+
+  const largura = cfg.largura ?? Math.max(1, Math.round(w * cfg.altura / h));
+  const altura = cfg.altura ?? Math.max(1, Math.round(h * cfg.largura / w));
+
+  if (cfg.modo === 'preencher') {
+    const s = Math.min(largura / w, altura / h);
+    const dw = Math.max(1, Math.round(w * s));
+    const dh = Math.max(1, Math.round(h * s));
+    const conteudo = escalar(img, 0, 0, w, h, dw, dh);
+    const c = novoCanvas(largura, altura);
+    const g = contexto(c);
+    if (!transparente) {  // com transparência a borda fica transparente
+      g.fillStyle = cfg.corFundo;
+      g.fillRect(0, 0, largura, altura);
+    }
+    g.drawImage(conteudo, Math.round((largura - dw) / 2), Math.round((altura - dh) / 2));
+    return c;
+  }
+  if (cfg.modo === 'cortar') {
+    const s = Math.max(largura / w, altura / h);
+    const sw = largura / s;
+    const sh = altura / s;
+    return escalar(img, (w - sw) / 2, (h - sh) / 2, sw, sh, largura, altura);
+  }
+  if (cfg.modo === 'ajustar') {
+    const s = Math.min(largura / w, altura / h);
+    return escalar(img, 0, 0, w, h, Math.max(1, Math.round(w * s)), Math.max(1, Math.round(h * s)));
+  }
+  if (cfg.modo === 'esticar') return escalar(img, 0, 0, w, h, largura, altura);
+  throw new Error(`modo de redimensionamento inválido: "${cfg.modo}"`);
+}
+
+function removerTransparencia(canvas, cor) {
+  const c = novoCanvas(canvas.width, canvas.height);
+  const g = contexto(c);
+  g.fillStyle = cor;
+  g.fillRect(0, 0, c.width, c.height);
+  g.drawImage(canvas, 0, 0);
+  return c;
+}
+
+// Prepara uma vez por resolução o que o codificador vai reutilizar a cada qualidade testada
+function preparar(canvas, cfg) {
+  if (cfg.formato === 'jpg') return { canvas: removerTransparencia(canvas, cfg.corFundo) };
+  if (cfg.formato === 'png') {
+    const rgba = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data.buffer;
+    return { canvas, rgba };
+  }
+  return { canvas };
+}
+
+function blobDoCanvas(canvas, mime, qualidade) {
+  return new Promise((ok, falha) => {
+    canvas.toBlob((blob) => (blob ? ok(blob) : falha(new Error('o navegador não conseguiu gerar a imagem'))), mime, qualidade);
+  });
+}
+
+async function codificar(prep, cfg, qualidade) {
+  const { canvas } = prep;
+  if (cfg.formato === 'png') {  // a "qualidade" vira número de cores da paleta
+    const cores = Math.max(2, Math.round(256 * qualidade / 100));
+    const png = UPNG.encode([prep.rgba.slice(0)], canvas.width, canvas.height, cores);
+    return new Blob([png], { type: 'image/png' });
+  }
+  const { mime } = FORMATOS[cfg.formato];
+  const blob = await blobDoCanvas(canvas, mime, qualidade / 100);
+  if (blob.type !== mime) throw new Error(`este navegador não gera ${cfg.formato.toUpperCase()}; use o Chrome ou o Edge`);
+  return blob;
+}
+
+// Retorna { blob, qualidade } com a maior qualidade que cabe no limite, ou null
+async function melhorQualidadeQueCabe(prep, cfg, limite) {
+  if (cfg.maximo) {
+    const blob = await codificar(prep, cfg, cfg.qMin);
+    return blob.size <= limite ? { blob, qualidade: cfg.qMin } : null;
+  }
+  let baixo = cfg.qMin;
+  let alto = cfg.qMax;
+  let melhor = null;
+  while (baixo <= alto) {
+    const q = Math.floor((baixo + alto) / 2);
+    const blob = await codificar(prep, cfg, q);
+    if (blob.size <= limite) {
+      melhor = { blob, qualidade: q };
+      baixo = q + 1;
+    } else {
+      alto = q - 1;
+    }
+  }
+  return melhor;
+}
+
+async function comprimir(arquivo, cfg) {
+  const limite = Math.floor(cfg.tamanhoKb * 1024);
+  const original = await carregarImagem(arquivo);
+  const transparente = cfg.formato !== 'jpg'
+    && PODE_TER_TRANSPARENCIA.has(extensao(arquivo.name))
+    && temTransparencia(original);
+  const base = redimensionar(original, cfg, transparente);
+  if (original.close) original.close();
+
+  let img = base;
+  let escala = 1;
+  while (true) {
+    const resultado = await melhorQualidadeQueCabe(preparar(img, cfg), cfg, limite);
+    if (resultado) {
+      return {
+        ...resultado,
+        largura: img.width,
+        altura: img.height,
+        base: `${base.width}×${base.height}`,
+        reduzida: img.width !== base.width || img.height !== base.height,
+      };
+    }
+    escala *= cfg.fator;
+    const nw = Math.max(1, Math.round(base.width * escala));
+    const nh = Math.max(1, Math.round(base.height * escala));
+    if (Math.min(nw, nh) < cfg.ladoMin) {
+      throw new Error(`não chegou a ${numero(cfg.tamanhoKb, 1)} KB sem reduzir a imagem abaixo de ${cfg.ladoMin}px`);
+    }
+    img = escalar(base, 0, 0, base.width, base.height, nw, nh);
+  }
+}
+
+// ---------------------- ZIP (sem compressão; as imagens já estão comprimidas) ----------------------
+const TABELA_CRC = (() => {
+  const t = new Uint32Array(256);
+  for (let n = 0; n < 256; n++) {
+    let c = n;
+    for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+    t[n] = c >>> 0;
+  }
+  return t;
+})();
+
+function crc32(bytes) {
+  let c = 0xffffffff;
+  for (let i = 0; i < bytes.length; i++) c = TABELA_CRC[(c ^ bytes[i]) & 0xff] ^ (c >>> 8);
+  return (c ^ 0xffffffff) >>> 0;
+}
+
+function criarZip(arquivos) {
+  const codificador = new TextEncoder();
+  const agora = new Date();
+  const hora = (agora.getHours() << 11) | (agora.getMinutes() << 5) | (agora.getSeconds() >> 1);
+  const data = ((agora.getFullYear() - 1980) << 9) | ((agora.getMonth() + 1) << 5) | agora.getDate();
+  const locais = [];
+  const central = [];
+  let deslocamento = 0;
+  let tamanhoCentral = 0;
+
+  for (const { nome, bytes } of arquivos) {
+    const nomeBytes = codificador.encode(nome);
+    const crc = crc32(bytes);
+
+    const local = new DataView(new ArrayBuffer(30));
+    local.setUint32(0, 0x04034b50, true);
+    local.setUint16(4, 20, true);
+    local.setUint16(6, 0x0800, true);  // nomes em UTF-8
+    local.setUint16(8, 0, true);       // sem compressão
+    local.setUint16(10, hora, true);
+    local.setUint16(12, data, true);
+    local.setUint32(14, crc, true);
+    local.setUint32(18, bytes.length, true);
+    local.setUint32(22, bytes.length, true);
+    local.setUint16(26, nomeBytes.length, true);
+    local.setUint16(28, 0, true);
+    locais.push(local, nomeBytes, bytes);
+
+    const entrada = new DataView(new ArrayBuffer(46));
+    entrada.setUint32(0, 0x02014b50, true);
+    entrada.setUint16(4, 20, true);
+    entrada.setUint16(6, 20, true);
+    entrada.setUint16(8, 0x0800, true);
+    entrada.setUint16(10, 0, true);
+    entrada.setUint16(12, hora, true);
+    entrada.setUint16(14, data, true);
+    entrada.setUint32(16, crc, true);
+    entrada.setUint32(20, bytes.length, true);
+    entrada.setUint32(24, bytes.length, true);
+    entrada.setUint16(28, nomeBytes.length, true);
+    entrada.setUint32(42, deslocamento, true);
+    central.push(entrada, nomeBytes);
+
+    deslocamento += 30 + nomeBytes.length + bytes.length;
+    tamanhoCentral += 46 + nomeBytes.length;
+  }
+
+  const fim = new DataView(new ArrayBuffer(22));
+  fim.setUint32(0, 0x06054b50, true);
+  fim.setUint16(8, arquivos.length, true);
+  fim.setUint16(10, arquivos.length, true);
+  fim.setUint32(12, tamanhoCentral, true);
+  fim.setUint32(16, deslocamento, true);
+  return new Blob([...locais, ...central, fim], { type: 'application/zip' });
+}
+
+// ---------------------- lote ----------------------
+let arquivos = [];
+let resultados = [];
+let execucao = 0;
+let processando = false;
+
+function liberarResultados() {
+  for (const r of resultados) if (r.url) URL.revokeObjectURL(r.url);
+  resultados = [];
+}
+
+function mostrarMensagem(id, linhas) {
+  const caixa = $(id);
+  caixa.replaceChildren();
+  caixa.hidden = !linhas.length;
+  if (linhas.length === 1) caixa.textContent = linhas[0];
+  else if (linhas.length) {
+    const ul = elemento('ul');
+    for (const l of linhas) ul.append(elemento('li', '', l));
+    caixa.append(ul);
+  }
+}
+
+const SELOS = { aguardando: 'Aguardando', processando: 'Processando…', ok: 'OK', erro: 'ERRO', pulado: 'PULADO' };
+
+function atualizarItem(r) {
+  const li = r.el;
+  li.className = `item estado-${r.estado}`;
+  li.replaceChildren();
+
+  const mini = elemento('div', 'miniatura');
+  if (r.url) {
+    const img = elemento('img');
+    img.src = r.url;
+    img.alt = '';
+    mini.append(img);
+  }
+
+  const dados = elemento('div');
+  const nome = r.estado === 'ok' ? `${r.arquivo.name} → ${r.nomeSaida}` : r.arquivo.name;
+  let detalhe = kb(r.arquivo.size);
+  if (r.estado === 'ok') {
+    detalhe = `${kb(r.arquivo.size)} → ${kb(r.blob.size)} · ${r.largura}×${r.altura} · q${r.qualidade}`;
+    if (r.reduzida) detalhe += ` · reduzida abaixo de ${r.base} para caber`;
+  } else if (r.mensagem) {
+    detalhe = r.mensagem;
+  }
+  dados.append(elemento('div', 'nome', nome), elemento('div', 'detalhe', detalhe));
+
+  li.append(mini, dados, elemento('span', 'selo', SELOS[r.estado]));
+  if (r.estado === 'ok') {
+    const a = elemento('a', 'botao secundario', 'Baixar');
+    a.href = r.url;
+    a.download = r.nomeSaida;
+    li.append(a);
+  }
+}
+
+function atualizarResumo() {
+  const conta = (estado) => resultados.filter((r) => r.estado === estado).length;
+  const ok = conta('ok');
+  $('barra').hidden = !resultados.length;
+  $('resumo').innerHTML = '';
+  $('resumo').append(
+    'Gerados: ', elemento('b', '', String(ok)),
+    ' · Com erro: ', elemento('b', '', String(conta('erro'))),
+    ' · Pulados: ', elemento('b', '', String(conta('pulado'))),
+  );
+  $('baixarZip').disabled = processando || !ok;
+}
+
+function desenharLista() {
+  const lista = $('resultados');
+  lista.replaceChildren();
+  for (const r of resultados) {
+    r.el = elemento('li');
+    atualizarItem(r);
+    lista.append(r.el);
+  }
+  atualizarResumo();
+}
+
+async function processar() {
+  const id = ++execucao;
+  liberarResultados();
+  const { cfg, erros } = validar(lerFormulario());
+  mostrarMensagem('erros', erros);
+
+  const ordenados = [...arquivos].sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+  resultados = ordenados.map((arquivo) => ({ arquivo, estado: 'aguardando' }));
+  processando = !erros.length && resultados.length > 0;
+  desenharLista();
+  if (!processando) return;
+
+  if (cfg.formato === 'png') {
+    try {
+      await carregarUpng();
+    } catch (erro) {
+      if (id !== execucao) return;
+      for (const r of resultados) Object.assign(r, { estado: 'erro', mensagem: erro.message });
+      processando = false;
+      desenharLista();
+      return;
+    }
+  }
+
+  // Ex.: foto.png e foto.jpg gerariam o mesmo foto.jpg; o segundo é pulado para não sobrescrever
+  const destinosUsados = new Map();
+  for (const r of resultados) {
+    if (id !== execucao) return;
+    r.nomeSaida = semExtensao(r.arquivo.name) + FORMATOS[cfg.formato].ext;
+    const chave = r.nomeSaida.toLowerCase();
+    if (destinosUsados.has(chave)) {
+      Object.assign(r, { estado: 'pulado', mensagem: `geraria o mesmo ${r.nomeSaida} de ${destinosUsados.get(chave)}` });
+      atualizarItem(r);
+      continue;
+    }
+    destinosUsados.set(chave, r.arquivo.name);
+
+    r.estado = 'processando';
+    atualizarItem(r);
+    await new Promise((ok) => setTimeout(ok));  // deixa a tela atualizar entre imagens
+    try {
+      const resultado = await comprimir(r.arquivo, cfg);
+      if (id !== execucao) return;
+      Object.assign(r, resultado, { estado: 'ok', url: URL.createObjectURL(resultado.blob) });
+    } catch (erro) {
+      if (id !== execucao) return;
+      Object.assign(r, { estado: 'erro', mensagem: erro.message || String(erro) });
+    }
+    atualizarItem(r);
+    atualizarResumo();
+  }
+  processando = false;
+  atualizarResumo();
+}
+
+let espera = null;
+function processarEmBreve() {
+  clearTimeout(espera);
+  espera = setTimeout(processar, 400);
+}
+
+function adicionar(lista) {
+  const todos = [...lista];
+  const aceitos = todos.filter((f) => EXTENSOES_ACEITAS.has(extensao(f.name)));
+  const ignorados = todos.length - aceitos.length;
+  mostrarMensagem('info', ignorados ? [`${ignorados} arquivo(s) ignorado(s) por não serem imagens aceitas.`] : []);
+  if (!aceitos.length) return;
+  arquivos.push(...aceitos);
+  processar();
+}
+
+// ---------------------- eventos ----------------------
+preencherFormulario(configSalva());
+
+$('config').addEventListener('input', () => {
+  $('descricaoModo').textContent = DESCRICAO_MODOS[$('modo').value] || '';
+  salvarConfig();
+  processarEmBreve();
+});
+
+$('restaurar').addEventListener('click', () => {
+  preencherFormulario(PADROES);
+  salvarConfig();
+  processar();
+});
+
+$('arquivos').addEventListener('change', (e) => {
+  adicionar(e.target.files);
+  e.target.value = '';
+});
+
+const soltar = $('soltar');
+soltar.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' || e.key === ' ') {
+    e.preventDefault();
+    $('arquivos').click();
+  }
+});
+for (const tipo of ['dragenter', 'dragover']) {
+  soltar.addEventListener(tipo, (e) => {
+    e.preventDefault();
+    soltar.classList.add('ativo');
+  });
+}
+for (const tipo of ['dragleave', 'drop']) {
+  soltar.addEventListener(tipo, () => soltar.classList.remove('ativo'));
+}
+soltar.addEventListener('drop', (e) => {
+  e.preventDefault();
+  adicionar(e.dataTransfer.files);
+});
+// Evita que soltar a imagem fora da área abra o arquivo no navegador
+window.addEventListener('dragover', (e) => e.preventDefault());
+window.addEventListener('drop', (e) => e.preventDefault());
+
+document.addEventListener('paste', (e) => {
+  const colados = [...(e.clipboardData?.files || [])];
+  if (colados.length) adicionar(colados);
+});
+
+$('limpar').addEventListener('click', () => {
+  execucao++;
+  arquivos = [];
+  liberarResultados();
+  processando = false;
+  mostrarMensagem('info', []);
+  desenharLista();
+});
+
+$('baixarZip').addEventListener('click', async () => {
+  const prontos = resultados.filter((r) => r.estado === 'ok');
+  if (!prontos.length) return;
+  const itens = await Promise.all(prontos.map(async (r) => ({
+    nome: r.nomeSaida,
+    bytes: new Uint8Array(await r.blob.arrayBuffer()),
+  })));
+  baixar(criarZip(itens), 'imagens-comprimidas.zip');
+});
+</script>
+</body>
+</html>
